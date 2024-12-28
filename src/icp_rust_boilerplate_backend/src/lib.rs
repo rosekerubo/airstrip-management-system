@@ -101,6 +101,9 @@ struct CapacityStatus {
     available_slots: u64,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct Key(u64);
+
 // MaintenanceSchedule struct
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct MaintenanceSchedule {
@@ -337,19 +340,88 @@ thread_local! {
 
 // Functions
 
+// Input validation helper
+fn validate_string_field(field: &str, field_name: &str) -> Result<(), Message> {
+    if field.trim().is_empty() {
+        Err(Message::InvalidPayload(format!("{} cannot be empty", field_name)))
+    } else {
+        Ok(())
+    }
+}
+
+// Utility function to fetch or increment ID
+fn fetch_and_increment_id() -> u64 {
+    ID_COUNTER.with(|counter| {
+        let current_value = *counter.borrow().get();
+        counter.borrow_mut().set(current_value + 1).unwrap();
+        current_value
+    })
+}
+
+// New meaningful functions
+
+/// Cancel a flight by ID
+#[ic_cdk::update]
+fn cancel_flight(flight_id: u64) -> Result<Message, Message> {
+    FLIGHTS.with(|flights| {
+        let mut flights = flights.borrow_mut();
+        if let Some(mut flight) = flights.get(&flight_id) {
+            flight.status = "cancelled".to_string();
+            flights.insert(flight_id, flight);
+            Ok(Message::Success("Flight successfully cancelled".to_string()))
+        } else {
+            Err(Message::NotFound("Flight not found".to_string()))
+        }
+    })
+}
+
+/// Update airstrip capacity
+#[ic_cdk::update]
+fn update_airstrip_capacity(airstrip_id: u64, new_capacity: u64) -> Result<Message, Message> {
+    AIRSTRIPS.with(|airstrips| {
+        let mut airstrips = airstrips.borrow_mut();
+        if let Some(mut airstrip) = airstrips.get(&airstrip_id) {
+            airstrip.capacity = new_capacity;
+            airstrips.insert(airstrip_id, airstrip);
+            Ok(Message::Success("Airstrip capacity updated successfully".to_string()))
+        } else {
+            Err(Message::NotFound("Airstrip not found".to_string()))
+        }
+    })
+}
+
+/// List all scheduled flights for an airstrip
+#[ic_cdk::query]
+fn list_scheduled_flights(airstrip_id: u64) -> Vec<Flight> {
+    FLIGHTS.with(|flights| {
+        flights
+            .borrow()
+            .iter()
+            .filter(|(_, flight)| flight.airstrip_id == airstrip_id && flight.status == "scheduled")
+            .map(|(_, flight)| flight)
+            .collect()
+    })
+}
+
+/// Fetch airstrip information by ID
+#[ic_cdk::query]
+fn get_airstrip_info(airstrip_id: u64) -> Result<Airstrip, Message> {
+    AIRSTRIPS.with(|airstrips| {
+        airstrips
+            .borrow()
+            .get(&airstrip_id)
+            .ok_or(Message::NotFound("Airstrip not found".to_string()))
+    })
+}
+
 // Create Airstrip
 #[ic_cdk::update]
 fn create_airstrip(payload: CreateAirstripPayload) -> Result<Airstrip, Message> {
-    if payload.name.is_empty() || payload.contact.is_empty() || payload.email.is_empty() {
-        return Err(Message::InvalidPayload("Missing required fields".to_string()));
-    }
+    validate_string_field(&payload.name, "Airstrip name")?;
+    validate_string_field(&payload.contact, "Contact")?;
+    validate_string_field(&payload.email, "Email")?;
 
-    let airstrip_id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Counter increment failed");
+    let airstrip_id = fetch_and_increment_id();
 
     let airstrip = Airstrip {
         id: airstrip_id,
@@ -372,21 +444,15 @@ fn create_airstrip(payload: CreateAirstripPayload) -> Result<Airstrip, Message> 
 // Schedule Flight
 #[ic_cdk::update]
 fn schedule_flight(payload: ScheduleFlightPayload) -> Result<Flight, Message> {
-    if payload.flight_number.is_empty() || payload.destination.is_empty() {
-        return Err(Message::InvalidPayload("Missing required fields".to_string()));
-    }
+    validate_string_field(&payload.flight_number, "Flight number")?;
+    validate_string_field(&payload.destination, "Destination")?;
 
     let airstrip_exists = AIRSTRIPS.with(|airstrips| airstrips.borrow().contains_key(&payload.airstrip_id));
     if !airstrip_exists {
         return Err(Message::NotFound("Airstrip not found".to_string()));
     }
 
-    let flight_id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Counter increment failed");
+    let flight_id = fetch_and_increment_id();
 
     let flight = Flight {
         id: flight_id,
@@ -408,16 +474,10 @@ fn schedule_flight(payload: ScheduleFlightPayload) -> Result<Flight, Message> {
 // Register Pilot
 #[ic_cdk::update]
 fn register_pilot(payload: RegisterPilotPayload) -> Result<Pilot, Message> {
-    if payload.name.is_empty() || payload.license_number.is_empty() {
-        return Err(Message::InvalidPayload("Missing required fields".to_string()));
-    }
+    validate_string_field(&payload.name, "Pilot name")?;
+    validate_string_field(&payload.license_number, "License number")?;
 
-    let pilot_id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Counter increment failed");
+    let pilot_id = fetch_and_increment_id();
 
     let pilot = Pilot {
         id: pilot_id,
@@ -438,21 +498,14 @@ fn register_pilot(payload: RegisterPilotPayload) -> Result<Pilot, Message> {
 // Schedule Maintenance
 #[ic_cdk::update]
 fn schedule_maintenance(payload: ScheduleMaintenancePayload) -> Result<MaintenanceSchedule, Message> {
-    if payload.description.is_empty() {
-        return Err(Message::InvalidPayload("Missing required fields".to_string()));
-    }
+    validate_string_field(&payload.description, "Maintenance description")?;
 
     let airstrip_exists = AIRSTRIPS.with(|airstrips| airstrips.borrow().contains_key(&payload.airstrip_id));
     if !airstrip_exists {
         return Err(Message::NotFound("Airstrip not found".to_string()));
     }
 
-    let maintenance_id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Counter increment failed");
+    let maintenance_id = fetch_and_increment_id();
 
     let maintenance = MaintenanceSchedule {
         id: maintenance_id,
@@ -569,11 +622,10 @@ fn create_emergency_protocol(
     contact_numbers: Vec<String>,
     evacuation_routes: Vec<String>,
 ) -> Result<EmergencyProtocol, Message> {
-    let protocol_id = ID_COUNTER.with(|counter| {
-        let current_value = *counter.borrow().get();
-        counter.borrow_mut().set(current_value + 1).unwrap();
-        current_value
-    });
+    validate_string_field(&protocol_type, "Protocol type")?;
+    validate_string_field(&description, "Description")?;
+
+    let protocol_id = fetch_and_increment_id();
 
     let protocol = EmergencyProtocol {
         id: protocol_id,
@@ -600,11 +652,9 @@ fn update_fuel_inventory(
     quantity: f64,
     unit_price: f64,
 ) -> Result<FuelInventory, Message> {
-    let inventory_id = ID_COUNTER.with(|counter| {
-        let current_value = *counter.borrow().get();
-        counter.borrow_mut().set(current_value + 1).unwrap();
-        current_value
-    });
+    validate_string_field(&fuel_type, "Fuel type")?;
+
+    let inventory_id = fetch_and_increment_id();
 
     let inventory = FuelInventory {
         id: inventory_id,
@@ -630,11 +680,10 @@ fn record_revenue(
     amount: f64,
     description: String,
 ) -> Result<Revenue, Message> {
-    let revenue_id = ID_COUNTER.with(|counter| {
-        let current_value = *counter.borrow().get();
-        counter.borrow_mut().set(current_value + 1).unwrap();
-        current_value
-    });
+    validate_string_field(&source, "Revenue source")?;
+    validate_string_field(&description, "Revenue description")?;
+
+    let revenue_id = fetch_and_increment_id();
 
     let revenue = Revenue {
         id: revenue_id,

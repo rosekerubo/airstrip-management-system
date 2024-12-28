@@ -1,206 +1,139 @@
-type Appointment = record {
+type Airstrip = record {
   id : nat64;
-  status : text;
-  patient_id : nat64;
-  appointment_time : nat64;
-  video_link : opt text;
-  doctor_id : nat64;
-  reason : text;
-};
-type Chat = record {
-  id : nat64;
-  patient_id : nat64;
-  message : text;
-  timestamp : nat64;
-  doctor_id : nat64;
-};
-type Consultation = record {
-  id : nat64;
-  department_id : nat64;
-  patient_id : nat64;
-  problem : text;
-};
-type CreateAppointmentPayload = record {
-  patient_id : nat64;
-  appointment_time : nat64;
-  doctor_id : nat64;
-  reason : text;
-};
-type CreateChatPayload = record {
-  patient_id : nat64;
-  message : text;
-  timestamp : nat64;
-  doctor_id : nat64;
-};
-type CreateConsultationPayload = record {
-  department_id : nat64;
-  patient_id : nat64;
-  problem : text;
-};
-type CreateDepartmentPayload = record { name : text; description : text };
-type CreateDoctorPayload = record {
-  department_id : nat64;
+  contact : text;
   name : text;
-  image : text;
-};
-type CreateMedicalRecordPayload = record {
-  patient_id : nat64;
-  treatment : text;
-  diagnosis : text;
-  lab_results : vec text;
-  doctor_id : nat64;
-  prescriptions : vec Prescription;
-};
-type CreatePatientPayload = record {
-  age : nat64;
-  name : text;
-  current_medications : vec text;
+  created_at : nat64;
   email : text;
-  address : text;
-  gender : text;
-  emergency_contact : EmergencyContact;
-  medical_history : vec text;
-  phone_number : text;
-  allergies : vec text;
+  capacity : nat64;
+  runway_length : nat64;
+  location : text;
 };
-type CreatePaymentPayload = record {
-  patient_id : nat64;
-  appointment_id : nat64;
-  payment_method : text;
-  amount : nat64;
+type CapacityStatus = record {
+  scheduled_arrivals : nat64;
+  total_capacity : nat64;
+  current_occupancy : nat64;
+  available_slots : nat64;
+  scheduled_departures : nat64;
 };
-type CreatePrescriptionPayload = record {
-  patient_id : nat64;
-  instructions : text;
-  medications : vec text;
-  doctor_id : nat64;
-};
-type Department = record {
-  id : nat64;
+type CreateAirstripPayload = record {
+  contact : text;
   name : text;
+  email : text;
+  capacity : nat64;
+  runway_length : nat64;
+  location : text;
+};
+type EmergencyProtocol = record {
+  id : nat64;
   description : text;
   created_at : nat64;
+  contact_numbers : vec text;
+  airstrip_id : nat64;
+  evacuation_routes : vec text;
+  protocol_type : text;
 };
-type Doctor = record {
+type Flight = record {
   id : nat64;
-  department_id : nat64;
-  name : text;
-  is_available : bool;
-  image : text;
+  status : text;
+  destination : text;
+  departure_time : nat64;
+  flight_number : text;
+  airstrip_id : nat64;
+  arrival_time : nat64;
 };
-type EmergencyContact = record {
-  relationship : text;
-  name : text;
-  phone_number : text;
-};
-type MedicalRecord = record {
+type FuelInventory = record {
   id : nat64;
-  patient_id : nat64;
-  treatment : text;
-  created_at : nat64;
-  diagnosis : text;
-  lab_results : vec text;
-  doctor_id : nat64;
-  prescriptions : vec Prescription;
+  last_updated : nat64;
+  airstrip_id : nat64;
+  unit_price : float64;
+  quantity : float64;
+  fuel_type : text;
+};
+type MaintenanceSchedule = record {
+  id : nat64;
+  status : text;
+  date : nat64;
+  description : text;
+  airstrip_id : nat64;
 };
 type Message = variant {
   Error : text;
-  PaymentFailed : text;
   InvalidPayload : text;
   NotFound : text;
   Success : text;
-  PaymentCompleted : text;
 };
-type Patient = record {
+type Pilot = record {
   id : nat64;
-  age : nat64;
+  license_number : text;
+  contact : text;
+  experience_years : nat64;
   name : text;
-  current_medications : vec text;
   email : text;
-  address : text;
-  gender : text;
-  emergency_contact : EmergencyContact;
-  medical_history : vec text;
-  phone_number : text;
-  allergies : vec text;
 };
-type Payment = record {
+type PilotSchedule = record {
   id : nat64;
   status : text;
-  patient_id : nat64;
-  appointment_id : nat64;
-  payment_method : text;
-  amount : nat64;
+  end_time : nat64;
+  pilot_id : nat64;
+  start_time : nat64;
+  flight_id : nat64;
 };
-type Prescription = record {
+type RegisterPilotPayload = record {
+  license_number : text;
+  contact : text;
+  experience_years : nat64;
+  name : text;
+  email : text;
+};
+type Result = variant { Ok : Message; Err : Message };
+type Result_1 = variant { Ok : Airstrip; Err : Message };
+type Result_10 = variant { Ok : FuelInventory; Err : Message };
+type Result_2 = variant { Ok : EmergencyProtocol; Err : Message };
+type Result_3 = variant { Ok : CapacityStatus; Err : Message };
+type Result_4 = variant { Ok : vec record { text; float64 }; Err : Message };
+type Result_5 = variant { Ok : Revenue; Err : Message };
+type Result_6 = variant { Ok : Pilot; Err : Message };
+type Result_7 = variant { Ok : Flight; Err : Message };
+type Result_8 = variant { Ok : MaintenanceSchedule; Err : Message };
+type Result_9 = variant { Ok : PilotSchedule; Err : Message };
+type Revenue = record {
   id : nat64;
-  patient_id : nat64;
-  issued_at : nat64;
-  instructions : text;
-  medications : vec text;
-  doctor_id : nat64;
+  transaction_date : nat64;
+  source : text;
+  description : text;
+  airstrip_id : nat64;
+  amount : float64;
 };
-type Result = variant { Ok : Appointment; Err : Message };
-type Result_1 = variant { Ok : Chat; Err : Message };
-type Result_10 = variant { Ok : vec Chat; Err : Message };
-type Result_11 = variant { Ok : vec Consultation; Err : Message };
-type Result_12 = variant { Ok : vec Department; Err : Message };
-type Result_13 = variant { Ok : vec Doctor; Err : Message };
-type Result_14 = variant { Ok : vec MedicalRecord; Err : Message };
-type Result_15 = variant { Ok : vec Patient; Err : Message };
-type Result_16 = variant { Ok : vec Payment; Err : Message };
-type Result_17 = variant { Ok : vec Prescription; Err : Message };
-type Result_2 = variant { Ok : Consultation; Err : Message };
-type Result_3 = variant { Ok : Department; Err : Message };
-type Result_4 = variant { Ok : Doctor; Err : Message };
-type Result_5 = variant { Ok : MedicalRecord; Err : Message };
-type Result_6 = variant { Ok : Patient; Err : Message };
-type Result_7 = variant { Ok : Payment; Err : Message };
-type Result_8 = variant { Ok : Prescription; Err : Message };
-type Result_9 = variant { Ok : vec Appointment; Err : Message };
+type ScheduleFlightPayload = record {
+  destination : text;
+  departure_time : nat64;
+  flight_number : text;
+  airstrip_id : nat64;
+  arrival_time : nat64;
+};
+type ScheduleMaintenancePayload = record {
+  date : nat64;
+  description : text;
+  airstrip_id : nat64;
+};
 service : {
-  create_appointment : (CreateAppointmentPayload) -> (Result);
-  create_chat : (CreateChatPayload) -> (Result_1);
-  create_consultation : (CreateConsultationPayload) -> (Result_2);
-  create_department : (CreateDepartmentPayload) -> (Result_3);
-  create_doctor : (CreateDoctorPayload) -> (Result_4);
-  create_medical_record : (CreateMedicalRecordPayload) -> (Result_5);
-  create_patient : (CreatePatientPayload) -> (Result_6);
-  create_payment : (CreatePaymentPayload) -> (Result_7);
-  create_prescription : (CreatePrescriptionPayload) -> (Result_8);
-  get_all_appointments : () -> (Result_9) query;
-  get_all_chats : () -> (Result_10) query;
-  get_all_consultations : () -> (Result_11) query;
-  get_all_departments : () -> (Result_12) query;
-  get_all_doctors : () -> (Result_13) query;
-  get_all_medical_records : () -> (Result_14) query;
-  get_all_patients : () -> (Result_15) query;
-  get_all_payments : () -> (Result_16) query;
-  get_all_prescriptions : () -> (Result_17) query;
-  get_appointment_by_id : (nat64) -> (Result) query;
-  get_appointments_by_doctor_id : (nat64) -> (Result_9) query;
-  get_appointments_by_patient_id : (nat64) -> (Result_9) query;
-  get_chat_by_id : (nat64) -> (Result_1) query;
-  get_chats_by_doctor_id : (nat64) -> (Result_10) query;
-  get_chats_by_patient_id : (nat64) -> (Result_10) query;
-  get_consultation_by_id : (nat64) -> (Result_2) query;
-  get_consultations_by_patient_id : (nat64) -> (Result_11) query;
-  get_department_by_id : (nat64) -> (Result_3) query;
-  get_doctor_by_id : (nat64) -> (Result_4) query;
-  get_doctors_by_department_id : (nat64) -> (Result_13) query;
-  get_medical_record_by_id : (nat64) -> (Result_5) query;
-  get_medical_records_by_doctor_id : (nat64) -> (Result_14) query;
-  get_medical_records_by_patient_id : (nat64) -> (Result_14) query;
-  get_patient_by_id : (nat64) -> (Result_6) query;
-  get_payment_by_id : (nat64) -> (Result_7) query;
-  get_payments_by_appointment_id : (nat64) -> (Result_16) query;
-  get_payments_by_patient_id : (nat64) -> (Result_16) query;
-  get_prescription_by_id : (nat64) -> (Result_8) query;
-  get_prescriptions_by_doctor_id : (nat64) -> (Result_17) query;
-  get_prescriptions_by_patient_id : (nat64) -> (Result_17) query;
-  search_departments_by_name : (text) -> (Result_12) query;
-  search_doctors_by_name : (text) -> (Result_13) query;
-  update_appointment_status : (nat64, text) -> (Result);
-  update_appointment_video_link : (nat64, text) -> (Result);
-  update_doctor_availability : (nat64, bool) -> (Result_4);
+  cancel_flight : (nat64) -> (Result);
+  create_airstrip : (CreateAirstripPayload) -> (Result_1);
+  create_emergency_protocol : (nat64, text, text, vec text, vec text) -> (
+      Result_2,
+    );
+  get_airstrip_info : (nat64) -> (Result_1) query;
+  get_capacity_status : (nat64) -> (Result_3) query;
+  get_emergency_protocols : (nat64) -> (vec EmergencyProtocol) query;
+  get_fuel_inventory : (nat64) -> (vec FuelInventory) query;
+  get_pilot_schedule : (nat64) -> (vec PilotSchedule) query;
+  get_revenue_analysis : (nat64, nat64, nat64) -> (Result_4) query;
+  list_scheduled_flights : (nat64) -> (vec Flight) query;
+  record_revenue : (nat64, text, float64, text) -> (Result_5);
+  register_pilot : (RegisterPilotPayload) -> (Result_6);
+  schedule_flight : (ScheduleFlightPayload) -> (Result_7);
+  schedule_maintenance : (ScheduleMaintenancePayload) -> (Result_8);
+  schedule_pilot : (nat64, nat64, nat64, nat64) -> (Result_9);
+  update_airstrip_capacity : (nat64, nat64) -> (Result);
+  update_fuel_inventory : (nat64, text, float64, float64) -> (Result_10);
 }
